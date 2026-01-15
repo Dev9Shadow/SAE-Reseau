@@ -1,10 +1,8 @@
 /*
- * mbash.c - Version 0.3 (Avec Tests Unitaires)
+ * mbash.c - Version 0.5 (Parsing par Automate)
  * Compilation: gcc -Wall mbash.c -o mbash
  * Lancement: ./mbash
  * Auteurs: Romain SANTILLI et Eliot SCHMITT
- * Tests: if true then true fi    
-          if true then echo TEST_OK fi
  */
 
 #include <stdio.h>
@@ -16,6 +14,10 @@
 
 #define MAX_CMD_LEN 1024
 #define MAX_ARGS 64
+
+// etats de l'automate
+#define STATE_SPACE 0 
+#define STATE_TOKEN 1 
 
 // prototypes
 int execute_command(char **args);
@@ -32,16 +34,35 @@ void print_prompt() {
     fflush(stdout);
 }
 
-// tokenization pour liste de cmd
+// automate de parsing (memoire optimisee)
 int parse_input(char *input, char **args) {
-    int i = 0;
-    char *token = strtok(input, " ");
-    while (token != NULL && i < MAX_ARGS - 1) {
-        args[i++] = token;
-        token = strtok(NULL, " ");
+    int count = 0;
+    int state = STATE_SPACE;
+    char *ptr = input;
+
+    while (*ptr != '\0' && count < MAX_ARGS - 1) {
+        char c = *ptr;
+
+        if (state == STATE_SPACE) {
+            // si on trouve un char non-espace, debut de mot
+            if (c != ' ' && c != '\t' && c != '\n') {
+                state = STATE_TOKEN;
+                args[count++] = ptr; // on stocke l'adresse du debut
+            }
+        } 
+        else if (state == STATE_TOKEN) {
+            // si on trouve un separateur, fin de mot
+            if (c == ' ' || c == '\t' || c == '\n') {
+                state = STATE_SPACE;
+                *ptr = '\0'; // on coupe la chaine ici
+            }
+        }
+        ptr++;
     }
-    args[i] = NULL;
-    return i;
+    
+    // securite fin de tableau
+    args[count] = NULL;
+    return count;
 }
 
 // gestion background
@@ -147,7 +168,7 @@ int execute_command(char **args) {
 }
 
 int main() {
-    printf("mbash version 0.1 !\n");
+    printf("mbash version 0.5 !\n");
 
     char input[MAX_CMD_LEN];
     char *args[MAX_ARGS];
@@ -165,7 +186,7 @@ int main() {
         input[strcspn(input, "\n")] = 0;
         if (strlen(input) == 0) continue;
 
-        // tokenization
+        // tokenization par automate
         int argc = parse_input(input, args);
         if (argc == 0) continue;
 
