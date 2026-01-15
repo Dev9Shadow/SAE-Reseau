@@ -1,8 +1,10 @@
 /*
- * mbash.c - Version 0.1 
+ * mbash.c - Version 0.3 (Avec Tests Unitaires)
  * Compilation: gcc -Wall mbash.c -o mbash
  * Lancement: ./mbash
  * Auteurs: Romain SANTILLI et Eliot SCHMITT
+ * Tests: if true then true fi    
+          if true then echo TEST_OK fi
  */
 
 #include <stdio.h>
@@ -15,8 +17,9 @@
 #define MAX_CMD_LEN 1024
 #define MAX_ARGS 64
 
-// prototype pour recursion
+// prototypes
 int execute_command(char **args);
+int parse_input(char *input, char **args);
 
 // affichage du prompt 
 void print_prompt() {
@@ -27,6 +30,27 @@ void print_prompt() {
         printf("\033[1;36mmonbash\033[0m$ ");
     }
     fflush(stdout);
+}
+
+// tokenization pour liste de cmd
+int parse_input(char *input, char **args) {
+    int i = 0;
+    char *token = strtok(input, " ");
+    while (token != NULL && i < MAX_ARGS - 1) {
+        args[i++] = token;
+        token = strtok(NULL, " ");
+    }
+    args[i] = NULL;
+    return i;
+}
+
+// gestion background
+int detect_background(char **args, int count) {
+    if (count > 0 && strcmp(args[count - 1], "&") == 0) {
+        args[count - 1] = NULL;
+        return 1;
+    }
+    return 0;
 }
 
 // gestion du if single-line
@@ -40,8 +64,9 @@ int handle_if(char **args) {
         else if (strcmp(args[i], "fi") == 0) idx_fi = i;
     }
 
+    // verif syntaxe
     if (idx_then == -1 || idx_fi == -1) {
-        fprintf(stderr, "mbash: syntax error if...then...fi\n");
+        fprintf(stderr, "mbash: syntax error expected if...then...fi\n");
         return 1;
     }
 
@@ -51,7 +76,7 @@ int handle_if(char **args) {
     args[idx_fi] = NULL;
 
     // execution condition
-    int res = execute_command(&args[1]); // args[1] est apres le "if"
+    int res = execute_command(&args[1]);
 
     if (res == 0) {
         return execute_command(&args[idx_then + 1]);
@@ -65,12 +90,13 @@ int handle_if(char **args) {
 int execute_command(char **args) {
     if (args[0] == NULL) return 0;
 
-    // detection if
+    // cmd pour if
     if (strcmp(args[0], "if") == 0) return handle_if(args);
 
+    // cmd internes 
     if (strcmp(args[0], "exit") == 0) exit(0);
 
-    // cmd pour futur if
+    // cmd pour futur if (prepa)
     if (strcmp(args[0], "true") == 0) return 0;
     if (strcmp(args[0], "false") == 0) return 1;
 
@@ -121,7 +147,7 @@ int execute_command(char **args) {
 }
 
 int main() {
-    printf("Bienvenue dans mbash version 0.1 !\n");
+    printf("mbash version 0.1 !\n");
 
     char input[MAX_CMD_LEN];
     char *args[MAX_ARGS];
@@ -139,22 +165,12 @@ int main() {
         input[strcspn(input, "\n")] = 0;
         if (strlen(input) == 0) continue;
 
-        int i = 0;
-        int background = 0; 
-        char *token = strtok(input, " ");
-        
-        // tokenization pour liste de cmd
-        while (token != NULL && i < MAX_ARGS - 1) {
-            args[i++] = token;
-            token = strtok(NULL, " ");
-        }
-        args[i] = NULL;
+        // tokenization
+        int argc = parse_input(input, args);
+        if (argc == 0) continue;
 
-        // gestion background 
-        if (i > 0 && strcmp(args[i-1], "&") == 0) {
-            background = 1;
-            args[i-1] = NULL;
-        }
+        // gestion background
+        int background = detect_background(args, argc);
 
         if (strcmp(args[0], "status") == 0) {
              printf("Dernier status: %d\n", last_status);
