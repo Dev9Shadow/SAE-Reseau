@@ -1,5 +1,5 @@
 /*
- * mbash.c - Version 0.5 (Parsing par Automate)
+ * mbash.c - Version 0.5 
  * Compilation: gcc -Wall mbash.c -o mbash
  * Lancement: ./mbash
  * Auteurs: Romain SANTILLI et Eliot SCHMITT
@@ -44,23 +44,20 @@ int parse_input(char *input, char **args) {
         char c = *ptr;
 
         if (state == STATE_SPACE) {
-            // si on trouve un char non-espace, debut de mot
             if (c != ' ' && c != '\t' && c != '\n') {
                 state = STATE_TOKEN;
-                args[count++] = ptr; // on stocke l'adresse du debut
+                args[count++] = ptr;
             }
         } 
         else if (state == STATE_TOKEN) {
-            // si on trouve un separateur, fin de mot
             if (c == ' ' || c == '\t' || c == '\n') {
                 state = STATE_SPACE;
-                *ptr = '\0'; // on coupe la chaine ici
+                *ptr = '\0'; 
             }
         }
         ptr++;
     }
     
-    // securite fin de tableau
     args[count] = NULL;
     return count;
 }
@@ -85,18 +82,15 @@ int handle_if(char **args) {
         else if (strcmp(args[i], "fi") == 0) idx_fi = i;
     }
 
-    // verif syntaxe
     if (idx_then == -1 || idx_fi == -1) {
         fprintf(stderr, "mbash: syntax error expected if...then...fi\n");
         return 1;
     }
 
-    // decoupage des commandes
     args[idx_then] = NULL;
     if (idx_else != -1) args[idx_else] = NULL;
     args[idx_fi] = NULL;
 
-    // execution condition
     int res = execute_command(&args[1]);
 
     if (res == 0) {
@@ -107,24 +101,15 @@ int handle_if(char **args) {
     return 0;
 }
 
-// execution centrale
+// execution centrale des commandes
 int execute_command(char **args) {
     if (args[0] == NULL) return 0;
-
-    // cmd pour if
     if (strcmp(args[0], "if") == 0) return handle_if(args);
-
-    // cmd internes 
     if (strcmp(args[0], "exit") == 0) exit(0);
-
-    // cmd pour futur if (prepa)
     if (strcmp(args[0], "true") == 0) return 0;
     if (strcmp(args[0], "false") == 0) return 1;
-
-    // cmd status pour debug
     if (strcmp(args[0], "status") == 0) return 0;
 
-    // cmd cd
     if (strcmp(args[0], "cd") == 0) {
         if (args[1] == NULL) {
             fprintf(stderr, "mbash: cd: argument attendu\n");
@@ -137,7 +122,6 @@ int execute_command(char **args) {
         return 0;
     }
 
-    // cmd pwd
     if (strcmp(args[0], "pwd") == 0) {
         char cwd[1024];
         if (getcwd(cwd, sizeof(cwd)) != NULL) {
@@ -149,7 +133,6 @@ int execute_command(char **args) {
         }
     }
 
-    // cmd externes
     pid_t pid = fork();
     if (pid < 0) {
         perror("mbash: fork failed");
@@ -168,29 +151,24 @@ int execute_command(char **args) {
 }
 
 int main() {
-    printf("mbash version 0.5 !\n");
-
     char input[MAX_CMD_LEN];
     char *args[MAX_ARGS];
-    int last_status = 0; // resultat 0 ou 1
+    int last_status = 0; 
     
     while (1) {
         print_prompt();
 
-        // Ctrl+D pour quitter proprement
         if (fgets(input, MAX_CMD_LEN, stdin) == NULL) {
-            printf("\nAu revoir!\n");
+            printf("\nAu revoir\n");
             break; 
         }
 
         input[strcspn(input, "\n")] = 0;
         if (strlen(input) == 0) continue;
 
-        // tokenization par automate
         int argc = parse_input(input, args);
         if (argc == 0) continue;
 
-        // gestion background
         int background = detect_background(args, argc);
 
         if (strcmp(args[0], "status") == 0) {
@@ -198,7 +176,6 @@ int main() {
              continue;
         }
 
-        // appel execution
         if (background) {
             pid_t pid = fork();
             if (pid == 0) {
